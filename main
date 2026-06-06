@@ -2,56 +2,52 @@ from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
 
-# -----------------------
-# 1. داده‌ها (مثل PDF ساده شده)
-# -----------------------
-texts = [
-    "RAG combines retrieval and generation",
-    "Transformers are powerful models for NLP",
-    "FAISS is used for similarity search",
-    "Python is a programming language",
-    "I love machine learning"
-]
 
-# -----------------------
-# 2. ساخت embedding
-# -----------------------
-model = SentenceTransformer("all-MiniLM-L6-v2")
-embeddings = model.encode(texts)
+class SimpleVectorSearch:
+    def __init__(self, model_name="all-MiniLM-L6-v2"):
+        self.model = SentenceTransformer(model_name)
+        self.texts = []
+        self.index = None
 
-# تبدیل به numpy
-embeddings = np.array(embeddings).astype("float32")
+    def build(self, texts):
+        self.texts = texts
 
-# -----------------------
-# 3. ساخت FAISS index
-# -----------------------
-dim = embeddings.shape[1]
-index = faiss.IndexFlatL2(dim)
-index.add(embeddings)
+        embeddings = self.model.encode(texts)
+        embeddings = np.asarray(embeddings, dtype=np.float32)
 
-# -----------------------
-# 4. تابع search
-# -----------------------
-def search(query, k=2):
-    query_vec = model.encode([query]).astype("float32")
-    
-    distances, indices = index.search(query_vec, k)
-    
-    results = [texts[i] for i in indices[0]]
-    
-    return results
+        dim = embeddings.shape[1]
+        self.index = faiss.IndexFlatL2(dim)
+        self.index.add(embeddings)
 
-# -----------------------
-# 5. تست
-# -----------------------
-while True:
-    query = input("\nAsk something: ")
-    
-    if query == "exit":
-        break
-    
-    results = search(query)
-    
-    print("\nTop results:")
-    for r in results:
-        print("-", r)
+    def search(self, query, top_k=2):
+        query_vec = self.model.encode([query])
+        query_vec = np.asarray(query_vec, dtype=np.float32)
+
+        distances, indices = self.index.search(query_vec, top_k)
+
+        return [self.texts[i] for i in indices[0] if i != -1]
+
+
+if __name__ == "__main__":
+    docs = [
+        "RAG combines retrieval and generation",
+        "Transformers are powerful models for NLP",
+        "FAISS is used for similarity search",
+        "Python is a programming language",
+        "I love machine learning"
+    ]
+
+    search_engine = SimpleVectorSearch()
+    search_engine.build(docs)
+
+    while True:
+        query = input("\nAsk something (or type exit): ")
+
+        if query.lower() == "exit":
+            break
+
+        results = search_engine.search(query)
+
+        print("\nTop results:")
+        for r in results:
+            print("-", r)
