@@ -1,0 +1,57 @@
+from sentence_transformers import SentenceTransformer
+import faiss
+import numpy as np
+
+# -----------------------
+# 1. داده‌ها (مثل PDF ساده شده)
+# -----------------------
+texts = [
+    "RAG combines retrieval and generation",
+    "Transformers are powerful models for NLP",
+    "FAISS is used for similarity search",
+    "Python is a programming language",
+    "I love machine learning"
+]
+
+# -----------------------
+# 2. ساخت embedding
+# -----------------------
+model = SentenceTransformer("all-MiniLM-L6-v2")
+embeddings = model.encode(texts)
+
+# تبدیل به numpy
+embeddings = np.array(embeddings).astype("float32")
+
+# -----------------------
+# 3. ساخت FAISS index
+# -----------------------
+dim = embeddings.shape[1]
+index = faiss.IndexFlatL2(dim)
+index.add(embeddings)
+
+# -----------------------
+# 4. تابع search
+# -----------------------
+def search(query, k=2):
+    query_vec = model.encode([query]).astype("float32")
+    
+    distances, indices = index.search(query_vec, k)
+    
+    results = [texts[i] for i in indices[0]]
+    
+    return results
+
+# -----------------------
+# 5. تست
+# -----------------------
+while True:
+    query = input("\nAsk something: ")
+    
+    if query == "exit":
+        break
+    
+    results = search(query)
+    
+    print("\nTop results:")
+    for r in results:
+        print("-", r)
